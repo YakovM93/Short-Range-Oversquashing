@@ -59,27 +59,6 @@ Built with PyTorch, PyTorch Geometric, and PyTorch Lightning, this project aims 
 
 ---
 
-## Project Structure
-
-```
-short-range-oversquashing/
-├── train.py                 # Main training script
-├── utils.py                 # Utility functions
-├── requirements.txt         # Python dependencies
-├── configs/
-│   └── task_config.yaml    # Task configurations
-├── models/
-│   ├── graph_model.py      # GNN model implementations
-│   ├── lightning_model.py  # PyTorch Lightning wrapper
-│   ├── transformer.py      # SetTransformer model
-│   ├── Sumformer.py        # Sumformer model
-│   └── MLP.py              # MLP baseline
-└── data_generate/
-    └── graphs_generation.py # Synthetic graph generators
-```
-
----
-
 ## Usage
 
 ### Basic Training
@@ -175,9 +154,3 @@ Email: yonatans@campus.technion.ac.il
 For questions, feedback, or collaboration opportunities, feel free to reach out!
 
 ---
-
-## Acknowledgments
-
-- Research conducted at Technion – Israel Institute of Technology
-- Built with PyTorch, PyTorch Geometric, and PyTorch Lightning
-- Special thanks to collaborators and the graph learning community

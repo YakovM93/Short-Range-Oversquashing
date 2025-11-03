@@ -4,17 +4,15 @@ import torch
 from torch import Tensor
 from easydict import EasyDict
 from models.graph_model import GraphModelWithVirtualNode, GraphModel, GraphModelWithMultipleVirtualNodes
-from models.Sumformer import SumformerModel as SumformerModel
+from models.Sumformer import SumformerModel
 from models.transformer import SetTransformerModel
 import torch.nn as nn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch_geometric.data import Data
 import torch.nn.functional as F
-import pytorch_lightning as pl
 from torch.optim import Adam, AdamW
 from torch_geometric.data import Batch
 from pytorch_lightning.callbacks import ModelCheckpoint, Callback
-from pytorch_lightning.loggers import CSVLogger
 from typing import List, Optional
 import os
 
@@ -24,8 +22,7 @@ class StopAtValAccCallback(pl.Callback):
     Callback for early stopping when validation accuracy reaches a target value.
     
     Args:
-        target_acc (float): Accuracy threshold f
-        or stopping training early.
+        target_acc (float): Accuracy threshold for stopping training early.
     """
     def __init__(self, target_acc=1.0):
         super().__init__()
@@ -57,14 +54,14 @@ class LightningModel(pl.LightningModule):
         model (GraphModel): The actual graph model instance to be trained/tested.
         task_id (int): Task index for multi-task training. Default is 0.
     """
-    def __init__(self, args: EasyDict, model: GraphModelWithVirtualNode, task_id=0):
+    def __init__(self, args: EasyDict, model: GraphModel, task_id=0):
         super().__init__()
         self.task_id = task_id  # Identifier for the current task in multi-task settings
         self.lr = args.lr  # Learning rate for the optimizer
         self.lr_factor = args.lr_factor  # Factor by which the learning rate decreases on plateau
         self.optim_type = args.optim_type  # Optimizer type (e.g., 'Adam' or 'AdamW')
         self.weight_decay = args.wd  # Weight decay for regularization
-        self.task_type = args.task_type  # Task type, e.g. 'Star' or 'triangle'
+        self.task_type = args.task_type  # Task type ('two' or 'one')
         
         # The actual GNN model
         self.model = model
@@ -82,8 +79,6 @@ class LightningModel(pl.LightningModule):
         if self.trainer.num_devices > 1 and self.current_epoch == 0:
             print(f"[GPU {self.global_rank}] Epoch {self.current_epoch} started")
     
-    
-    
     def forward(self, X: Data) -> Tensor:
         """
         Forward pass through the model.
@@ -92,9 +87,7 @@ class LightningModel(pl.LightningModule):
             X (Data): Torch Geometric Data object containing node features and edge indices.
         
         Returns:
-            Tensor: 
-              - If Star: [num_nodes, out_dim] 
-              - If triangle: [batch_size (usually 1), out_dim]
+            Tensor: [num_nodes, out_dim] 
         """
         return self.model(X)
 
@@ -110,24 +103,17 @@ class LightningModel(pl.LightningModule):
         optimizer_cls = torch.optim.Adam if self.optim_type == 'Adam' else torch.optim.AdamW
         optimizer = optimizer_cls(self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay)
         
-        # Configure LR scheduler to reduce on plateau (monitor training accuracy)
-        #lr_scheduler = ReduceLROnPlateau(optimizer, factor=self.lr_factor, mode='max')
-        
         lr_scheduler = ReduceLROnPlateau(
-                                    optimizer, 
-                                    factor=self.lr_factor,  
-                                    mode='max',
-                                    patience=2,        
-                                    #min_lr=1e-6,        
-                                    #verbose=True        
-                                  )
+            optimizer, 
+            factor=self.lr_factor,  
+            mode='max',
+            patience=2,        
+        )
         
         lr_scheduler_config = {
             "scheduler": lr_scheduler,
             "interval": "epoch",
             "monitor": "train_acc",  
-            #"strict": False,  
-            #"check_on_train_epoch_end": False  
         }
         return [optimizer], lr_scheduler_config
 
@@ -135,55 +121,48 @@ class LightningModel(pl.LightningModule):
     # TRAINING STEP
     # -------------------------------------------------------------------------
     def training_step(self, batch: Data, batch_idx):
-      """
-      Computes training loss and accuracy for a batch and logs them.
-      """
-      self.model.train()
-      outputs = self(batch)  # forward pass
-  
-      # NODE-LEVEL CLASSIFICATION (Star)
-      # For Star graph: get outputs for masked nodes first
-      masked_indices = batch.train_mask.nonzero(as_tuple=True)[0]
-      masked_outputs = outputs[masked_indices]
-      
-      # Labels y are already only for the masked nodes
-      labels = batch.y
-      
-      loss = F.cross_entropy(masked_outputs, labels)
-      preds = torch.argmax(masked_outputs, dim=-1)
-      acc = (preds == labels).float().mean()
-          
-          loss = F.cross_entropy(masked_outputs, labels)
-          preds = torch.argmax(masked_outputs, dim=-1)
-          acc = (preds == labels).float().mean()
-  
-      # Logging
-      self.log("train_loss", loss, prog_bar=False, on_step=True, on_epoch=True, batch_size=labels.size(0))
-      self.log("train_acc", acc, prog_bar=True, on_step=True, on_epoch=True, batch_size=labels.size(0))
-      return loss
+        """
+        Computes training loss and accuracy for a batch and logs them.
+        """
+        self.model.train()
+        outputs = self(batch)  # forward pass
+        
+        # NODE-LEVEL CLASSIFICATION
+        # For the two-radius problem: get outputs for masked nodes first
+        masked_indices = batch.train_mask.nonzero(as_tuple=True)[0]
+        masked_outputs = outputs[masked_indices]
+        
+        # Labels y are already only for the masked nodes
+        labels = batch.y
+        
+        loss = F.cross_entropy(masked_outputs, labels)
+        preds = torch.argmax(masked_outputs, dim=-1)
+        acc = (preds == labels).float().mean()
+        
+        # Logging
+        self.log("train_loss", loss, prog_bar=False, on_step=True, on_epoch=True, batch_size=labels.size(0))
+        self.log("train_acc", acc, prog_bar=True, on_step=True, on_epoch=True, batch_size=labels.size(0))
+        return loss
 
     # -------------------------------------------------------------------------
     # VALIDATION STEP
     # -------------------------------------------------------------------------
-
-        
     def validation_step(self, batch: Data, batch_idx):
-
         self.model.eval()
         with torch.no_grad():
             outputs = self(batch)
-    
+            
             # NODE-LEVEL with mask handling
             masked_indices = batch.val_mask.nonzero(as_tuple=True)[0]
             masked_outputs = outputs[masked_indices]
             
             # Labels y are already only for the masked nodes
             labels = batch.y
-   
+            
             loss = F.cross_entropy(masked_outputs, labels)
             preds = torch.argmax(masked_outputs, dim=-1)
             acc = (preds == labels).float().mean()
-    
+        
         # Logging
         self.log("val_loss", loss, prog_bar=False, on_step=False, on_epoch=True, batch_size=labels.size(0))
         self.log("val_acc", acc, prog_bar=True, on_step=False, on_epoch=True, batch_size=labels.size(0))
@@ -196,7 +175,7 @@ class LightningModel(pl.LightningModule):
         self.model.eval()
         with torch.no_grad():
             outputs = self(batch)
-    
+            
             # NODE-LEVEL with mask handling
             masked_indices = batch.test_mask.nonzero(as_tuple=True)[0]
             masked_outputs = outputs[masked_indices]
@@ -207,7 +186,7 @@ class LightningModel(pl.LightningModule):
             loss = F.cross_entropy(masked_outputs, labels)
             preds = torch.argmax(masked_outputs, dim=-1)
             acc = (preds == labels).float().mean()
-    
+        
         self.log("test_loss", loss, prog_bar=False, on_step=False, on_epoch=True, batch_size=labels.size(0))
         self.log("test_acc", acc, prog_bar=True, on_step=False, on_epoch=True, batch_size=labels.size(0))
         return loss
@@ -215,7 +194,7 @@ class LightningModel(pl.LightningModule):
         
 class AccuracyPrintCallback(pl.Callback):
     """
-    Simple callback to print accuracies every 10 epochs and summary at the end.
+    Simple callback to print accuracies every 50 epochs and summary at the end.
     """
     def __init__(self):
         super().__init__()
@@ -233,7 +212,7 @@ class AccuracyPrintCallback(pl.Callback):
             'val_acc': float(val_acc)
         })
         
-        # Print every 10 epochs
+        # Print every 50 epochs
         if (epoch + 1) % 50 == 0:
             print(f"\n[Epoch {epoch + 1}] Train Acc: {train_acc*100:.2f}%, Val Acc: {val_acc*100:.2f}%\n")
     
@@ -245,7 +224,7 @@ class AccuracyPrintCallback(pl.Callback):
         print(f"{'Epoch':<10} {'Train Acc':<15} {'Val Acc':<15}")
         print("-"*40)
         
-        # Print every 10th epoch from history
+        # Print every 50th epoch from history
         for record in self.accuracy_history:
             if record['epoch'] % 50 == 0:
                 print(f"{record['epoch']:<10} {record['train_acc']*100:<15.2f} {record['val_acc']*100:<15.2f}")

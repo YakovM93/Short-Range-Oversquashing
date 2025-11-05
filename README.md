@@ -136,9 +136,6 @@ python train.py --model_type GAT --task_type two --star_variant disconnected --s
 python train.py --model_type GCN --task_type two --K 5 --start 50 --end 200
 ```
 
-### Single central node with large graph range
-```bash
-python train.py --model_type SAGE --K 1 --start 10 --end 500
 ```
 
 ## SetTransformer and Attention Models
@@ -167,11 +164,6 @@ python train.py --model_type MLP --star_variant disconnected --mlp_hidden_dim 25
 
 ## Combined Configurations
 
-### GIN on disconnected one-radius problem
-```bash
-python train.py --model_type GIN --task_type one --star_variant disconnected --start 20 --end 150
-```
-
 ### GCN with virtual nodes and multiple central nodes
 ```bash
 python train.py --model_type GCN --use_virtual_nodes --num_virtual_nodes 2 --K 10 --start 50 --end 200
@@ -194,10 +186,9 @@ python train.py --model_type GAT --task_type two --start 10 --end 200 --K 1
 
 ## Notes
 - For MLP models, the `mlp_hidden_dim` parameter controls model capacity
-- Virtual nodes can significantly help with oversquashing issues
 - The `K` parameter only affects two-radius problems with connected variant
 - SetTransformer ignores graph structure and treats nodes as a set
-- Disconnected variant removes central nodes entirely, testing pure message passing
+- Disconnected variant removes central nodes entirely
 
 
 

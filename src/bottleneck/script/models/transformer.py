@@ -6,7 +6,6 @@ from torch_geometric.data import Data
 from easydict import EasyDict
 
 
-# Mapping for data types (matching graph_model.py)
 dtype_mapping = {
     "float32": torch.float32,
     "torch.float32": torch.float32,
@@ -19,7 +18,6 @@ dtype_mapping = {
 }
 
 
-# ====== Attention Modules ======
 
 class MAB(nn.Module):
     """Multi-head Attention Block with proper residual connections"""
@@ -44,36 +42,35 @@ class MAB(nn.Module):
     def forward(self, Q, K):
         B, N_q, _ = Q.shape
         B, N_k, _ = K.shape
-        # Linear projections
         Q_proj = self.fc_q(Q).view(B, N_q, self.num_heads, self.dim_head)
         K_proj = self.fc_k(K).view(B, N_k, self.num_heads, self.dim_head)
         V_proj = self.fc_v(K).view(B, N_k, self.num_heads, self.dim_head)
         
-        # Transpose for attention: [B, num_heads, N, dim_head]
+
         Q_proj = Q_proj.transpose(1, 2)
         K_proj = K_proj.transpose(1, 2)
         V_proj = V_proj.transpose(1, 2)
         
-        # Attention scores
+
         scores = torch.matmul(Q_proj, K_proj.transpose(-2, -1)) / math.sqrt(self.dim_head)
         attn = F.softmax(scores, dim=-1)
         attn = self.dropout(attn)
         
-        # Apply attention
-        out = torch.matmul(attn, V_proj)  # [B, num_heads, N_q, dim_head]
+
+        out = torch.matmul(attn, V_proj)  
         
-        # Concatenate heads
+
         out = out.transpose(1, 2).contiguous().view(B, N_q, self.dim_V)
         
-        # Output projection
+
         out = self.fc_o(out)
         out = self.dropout(out)
         
-        # Layer norm and residual
+
         if hasattr(self, 'ln0'):
             out = self.ln0(out)
         
-        # Add FFN with another residual
+
         if hasattr(self, 'ln1'):
             out_ffn = F.relu(out)
             out = self.ln1(out + out_ffn)
@@ -91,7 +88,7 @@ class SAB(nn.Module):
         return self.mab(X, X)
 
 
-# ====== Equivariant Set Block ======
+
 
 class EquivariantSetBlock(nn.Module):
     """
@@ -105,27 +102,27 @@ class EquivariantSetBlock(nn.Module):
         layers = []
         
         if num_layers == 1:
-            # Single layer: in_dim -> out_dim
+
             layers.append(SAB(in_dim, out_dim, num_heads, ln=ln, dropout=dropout))
         else:
-            # First layer: in_dim -> hidden_dim
+
             layers.append(SAB(in_dim, hidden_dim, num_heads, ln=ln, dropout=dropout))
             
-            # Middle layers: hidden_dim -> hidden_dim  
+  
             for _ in range(num_layers - 2):
                 layers.append(SAB(hidden_dim, hidden_dim, num_heads, ln=ln, dropout=dropout))
             
-            # Final layer: hidden_dim -> out_dim
+
             if num_layers > 1:
                 layers.append(SAB(hidden_dim, out_dim, num_heads, ln=ln, dropout=dropout))
         
         self.layers = nn.ModuleList(layers)
 
     def forward(self, X):
-        # Process through layers with residual connections
+
         for i, layer in enumerate(self.layers):
             if i > 0 and X.size(-1) == layer.mab.dim_V:
-                # Add residual connection if dimensions match
+
                 X_out = layer(X)
                 X = X + X_out
             else:
@@ -134,7 +131,7 @@ class EquivariantSetBlock(nn.Module):
         return X
 
 
-# ====== Main Transformer Model ======
+
 
 class SetTransformerModel(nn.Module):
     """
@@ -155,11 +152,11 @@ class SetTransformerModel(nn.Module):
         self.in_dim = args.in_dim
         self.task_type = args.task_type
         
-        # Transformer-specific parameters
+
         self.num_heads = getattr(args, 'num_heads', 2)
         self.dropout = getattr(args, 'dropout', 0.1)
         
-        # Build the equivariant set block
+
         self.transformer = EquivariantSetBlock(
             in_dim=self.in_dim,
             hidden_dim=self.h_dim,
@@ -170,10 +167,10 @@ class SetTransformerModel(nn.Module):
             dropout=self.dropout
         )
         
-        # Output layer (matching GraphModel)
+
         self.out_layer = nn.Linear(self.h_dim, self.out_dim, dtype=dtype)
         
-        # Initialize model parameters
+
         self.init_model()
     
     def init_model(self):
@@ -204,31 +201,29 @@ class SetTransformerModel(nn.Module):
         Returns:
             Tensor: Node embeddings of shape [num_nodes, h_dim]
         """
-        x = data.x  # [num_nodes, in_dim]
+        x = data.x  
         
-        # Handle batching - transformer expects [batch_size, num_nodes, features]
+       
         if hasattr(data, 'batch') and data.batch is not None:
             batch_size = data.batch.max().item() + 1
             max_nodes = (data.ptr[1:] - data.ptr[:-1]).max().item()
             
-            # Create padded batch tensor
+
             x_batched = torch.zeros(batch_size, max_nodes, x.size(1), 
                                   dtype=x.dtype, device=x.device)
             
-            # Fill in the actual nodes
+
             for i in range(batch_size):
                 start_idx = data.ptr[i].item()
                 end_idx = data.ptr[i + 1].item()
                 num_nodes = end_idx - start_idx
                 x_batched[i, :num_nodes] = x[start_idx:end_idx]
         else:
-            # Single graph - add batch dimension
+   
             x_batched = x.unsqueeze(0)
-        
-        # Apply transformer
-        x_batched = self.transformer(x_batched)  # [batch_size, num_nodes, h_dim]
-        
-        # Flatten back to PyG format if needed
+
+        x_batched = self.transformer(x_batched)  
+
         if hasattr(data, 'batch') and data.batch is not None:
             x_flat = []
             for i in range(batch_size):

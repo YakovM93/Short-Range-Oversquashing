@@ -4,7 +4,6 @@ from easydict import EasyDict
 import torch
 from torch import nn
 from torch_geometric.nn import GCNConv, GatedGraphConv, GINConv, GATConv, SAGEConv, TransformerConv
-#from graphs_generation import TwoRadiusProblemStarGraph, TwoRadiusProblemDisconnectedGraph, OneRadiusProblemStarGraph
 from models.transformer import SetTransformerModel
 from models.Sumformer import SumformerModel
 from data_generate.graphs_generation import TwoRadiusProblemStarGraph, TwoRadiusProblemDisconnectedGraph, OneRadiusProblemStarGraph
@@ -26,9 +25,9 @@ def get_layer(args: EasyDict, in_dim: int, out_dim: int):
         'GGNN': lambda: GatedGraphConv(out_channels=out_dim, num_layers=3),
         'GIN': lambda: GINConv(
             nn.Sequential(
-                nn.Linear(in_dim, args.dim),
+                nn.Linear(in_dim, 1024),
                 nn.ReLU(),
-                nn.Linear(args.dim, out_dim),
+                nn.Linear(1024, out_dim),
                 nn.ReLU(),
             ),
             eps=args.eps if hasattr(args, 'eps') else 0.2,
@@ -37,14 +36,14 @@ def get_layer(args: EasyDict, in_dim: int, out_dim: int):
         'GAT': lambda: GATConv(
             in_channels=in_dim,
             out_channels=out_dim,
-            heads=args.heads,  # Number of attention heads
-            concat=False  # Concatenates heads, making final dim = in_dim
+            heads=args.heads,  
+            concat=False  
         ),
         'SAGE': lambda: SAGEConv(in_channels=in_dim, out_channels=out_dim, aggr='sum'),
         'Transformer': lambda: TransformerConv(in_channels=in_dim, out_channels=out_dim)
     }
     
-    # Check if the requested layer type exists
+
     if args.gnn_type not in gnn_layers:
         raise ValueError(f"Unknown GNN type: {args.gnn_type}. Available types: {list(gnn_layers.keys())}")
     
@@ -71,20 +70,19 @@ def get_args(gnn_type: str, task_type: str, n: int, depth: int = 2, star_variant
     with open(config_path) as f:
         config = EasyDict(yaml.safe_load(f))
 
-    # Update with general configurations
+
     clean_args.update(config['Common'])
-    
-    # Handle SetTransformer, MLP, Sumformer separately as they're not GNN layer types
+
     if gnn_type in ['SetTransformer', 'MLP', 'Sumformer']:
-        # These are complete models, not GNN layers
+
         if gnn_type in config['Task_specific']:
             clean_args.update(config['Task_specific'][gnn_type][task_type])
         else:
-            # Fallback to GIN config if not defined
+
             clean_args.update(config['Task_specific']['GIN'][task_type])
-        clean_args.gnn_type = gnn_type  # Keep the original type
+        clean_args.gnn_type = gnn_type 
     else:
-        # Standard GNN layers
+
         if gnn_type in config['Task_specific'] and task_type in config['Task_specific'][gnn_type]:
             clean_args.update(config['Task_specific'][gnn_type][task_type])
         else:
@@ -104,32 +102,32 @@ def return_datasets(args):
         tuple: Training, testing, and validation datasets, and K value.
     """
     if args.task_type == "one":
-        # Create OneRadiusProblemStarGraph dataset
+
         rad_star = OneRadiusProblemStarGraph(args=args)
         dataset = rad_star.generate_data()
         K = rad_star.K
         
-        # Set input/output dimensions based on dataset
-        sample_data = dataset[0][0]  # Get first sample
-        args.in_dim = sample_data.x.size(1)  # Feature dimension
-        args.out_dim = rad_star.num_classes  # Number of classes
+
+        sample_data = dataset[0][0]  
+        args.in_dim = sample_data.x.size(1)  
+        args.out_dim = rad_star.num_classes  
         
         return dataset, K
         
     elif args.task_type == "two":
-        # Choose graph type based on star_variant
+
         if args.star_variant == 'disconnected':
             rad_star = TwoRadiusProblemDisconnectedGraph(args=args)
-        else:  # 'connected'
+        else:  
             rad_star = TwoRadiusProblemStarGraph(args=args)
         
         dataset = rad_star.generate_data()
         K = rad_star.K
         
-        # Set input/output dimensions based on dataset
-        sample_data = dataset[0][0]  # Get first sample
-        args.in_dim = sample_data.x.size(1)  # Feature dimension
-        args.out_dim = rad_star.num_classes  # Number of classes
+
+        sample_data = dataset[0][0]  
+        args.in_dim = sample_data.x.size(1)  
+        args.out_dim = rad_star.num_classes  
         
         return dataset, K
     else:
@@ -138,14 +136,12 @@ def return_datasets(args):
 
 def create_model_dir(args, task_specific):
     """Create model directory path for saving checkpoints."""
-    # Handle SetTransformer in model name
     if args.gnn_type == 'SetTransformer':
         model_type_name = 'SetTransformer'
     else:
         model_type_name = args.gnn_type
         
     model_name = '_'.join([f"{key}_{val}" for key, val in task_specific.items()])
-    # Truncate the model name to 100 characters
     model_name = model_name[:100]
     
     path_to_project = pathlib.Path(__file__).parent.parent
@@ -157,14 +153,14 @@ def compute_os_energy_batched(model, Data):
     """Compute oversquashing energy using gradient norms."""
     model = model.eval()
 
-    # Input validation
+
     if torch.isnan(Data.x).any() or torch.isinf(Data.x).any():
         raise ValueError("Data.x contains NaNs or Infs")
 
-    # Set requires_grad
+
     x = Data.x.clone().detach().requires_grad_(True)
 
-    # Infer batch stats
+
     M = Data.test_mask.sum()
     G = Data.num_graphs
     T = M // G if G > 0 else 0
@@ -175,12 +171,10 @@ def compute_os_energy_batched(model, Data):
     ptc = Data.ptr[:-1].view(-1, 1)
     sources = (ptc.squeeze().repeat_interleave(Data.n[0]) + Data.sources)
 
-    # Define function for Jacobian computation
+
     def model_target(x_local):
         Data.x = x_local
         return model(Data)[Data.test_mask]
-
-    # Enable anomaly detection
     with torch.autograd.set_detect_anomaly(True):
         jacobian = torch.autograd.functional.jacobian(model_target, x)
     
@@ -214,35 +208,27 @@ def compute_b_node_mad(model, test_batch):
     
     B nodes are identified by test_batch.test_mask.
     """
-    # Ensure the model is in evaluation mode and on the correct device
+
     model = model.eval().to('cuda')
     batch = test_batch.to('cuda')
     
     with torch.no_grad():
-        # Step 1: Compute node embeddings for the batch
+
         h = model.compute_node_embedding(batch)
-        
-        # Step 2: Isolate the embeddings for the nodes of interest (B nodes)
         b_embeddings = h[batch.test_mask]
         n = b_embeddings.shape[0]
 
-        # Handle the edge case where there are fewer than 2 nodes to compare
         if n < 2:
             return torch.tensor(0.0, device=b_embeddings.device)
 
-        # Step 3: Calculate the mean distance over unique pairs (Numerator)
         unique_pairwise_dists = torch.pdist(b_embeddings, p=2)
         mean_dist = unique_pairwise_dists.mean()
-
-        # Step 4: Calculate the average norm of the embeddings (Denominator)
         embedding_norms = torch.norm(b_embeddings, p=2, dim=1)
         avg_norm = embedding_norms.mean()
 
-        # Avoid division by zero
         if avg_norm == 0:
             return torch.tensor(0.0, device=b_embeddings.device)
 
-        # Step 5: Compute the final normalized metric
         final_metric = mean_dist / avg_norm
         
     return final_metric

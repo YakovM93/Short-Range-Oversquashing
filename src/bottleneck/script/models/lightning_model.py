@@ -56,17 +56,16 @@ class LightningModel(pl.LightningModule):
     """
     def __init__(self, args: EasyDict, model: GraphModel, task_id=0):
         super().__init__()
-        self.task_id = task_id  # Identifier for the current task in multi-task settings
-        self.lr = args.lr  # Learning rate for the optimizer
-        self.lr_factor = args.lr_factor  # Factor by which the learning rate decreases on plateau
-        self.optim_type = args.optim_type  # Optimizer type (e.g., 'Adam' or 'AdamW')
-        self.weight_decay = args.wd  # Weight decay for regularization
-        self.task_type = args.task_type  # Task type ('two' or 'one')
+        self.task_id = task_id  
+        self.lr = args.lr  
+        self.lr_factor = args.lr_factor  
+        self.optim_type = args.optim_type  
+        self.weight_decay = args.wd 
+        self.task_type = args.task_type  
         
-        # The actual GNN model
+
         self.model = model
         
-        # Save hyperparameters for distributed training
         self.save_hyperparameters(ignore=['model'])
     
     def on_train_start(self):
@@ -117,70 +116,62 @@ class LightningModel(pl.LightningModule):
         }
         return [optimizer], lr_scheduler_config
 
-    # -------------------------------------------------------------------------
-    # TRAINING STEP
-    # -------------------------------------------------------------------------
+
     def training_step(self, batch: Data, batch_idx):
         """
         Computes training loss and accuracy for a batch and logs them.
         """
         self.model.train()
-        outputs = self(batch)  # forward pass
+        outputs = self(batch)  
         
-        # NODE-LEVEL CLASSIFICATION
-        # For the two-radius problem: get outputs for masked nodes first
+
         masked_indices = batch.train_mask.nonzero(as_tuple=True)[0]
         masked_outputs = outputs[masked_indices]
         
-        # Labels y are already only for the masked nodes
+
         labels = batch.y
         
         loss = F.cross_entropy(masked_outputs, labels)
         preds = torch.argmax(masked_outputs, dim=-1)
         acc = (preds == labels).float().mean()
         
-        # Logging
+
         self.log("train_loss", loss, prog_bar=False, on_step=True, on_epoch=True, batch_size=labels.size(0))
         self.log("train_acc", acc, prog_bar=True, on_step=True, on_epoch=True, batch_size=labels.size(0))
         return loss
 
-    # -------------------------------------------------------------------------
-    # VALIDATION STEP
-    # -------------------------------------------------------------------------
+
     def validation_step(self, batch: Data, batch_idx):
         self.model.eval()
         with torch.no_grad():
             outputs = self(batch)
             
-            # NODE-LEVEL with mask handling
+
             masked_indices = batch.val_mask.nonzero(as_tuple=True)[0]
             masked_outputs = outputs[masked_indices]
             
-            # Labels y are already only for the masked nodes
+
             labels = batch.y
             
             loss = F.cross_entropy(masked_outputs, labels)
             preds = torch.argmax(masked_outputs, dim=-1)
             acc = (preds == labels).float().mean()
-        
-        # Logging
+
         self.log("val_loss", loss, prog_bar=False, on_step=False, on_epoch=True, batch_size=labels.size(0))
         self.log("val_acc", acc, prog_bar=True, on_step=False, on_epoch=True, batch_size=labels.size(0))
         return loss 
 
-    # -------------------------------------------------------------------------
-    # TEST STEP
-    # -------------------------------------------------------------------------
+
     def test_step(self, batch: Data, batch_idx):
         self.model.eval()
         with torch.no_grad():
             outputs = self(batch)
             
-            # NODE-LEVEL with mask handling
+
             masked_indices = batch.test_mask.nonzero(as_tuple=True)[0]
             masked_outputs = outputs[masked_indices]
             
-            # Labels y are already only for the masked nodes
+
             labels = batch.y
             
             loss = F.cross_entropy(masked_outputs, labels)
@@ -205,14 +196,14 @@ class AccuracyPrintCallback(pl.Callback):
         val_acc = trainer.callback_metrics.get('val_acc', 0.0)
         train_acc = trainer.callback_metrics.get('train_acc', 0.0)
         
-        # Store all epochs
+
         self.accuracy_history.append({
             'epoch': epoch + 1,
             'train_acc': float(train_acc),
             'val_acc': float(val_acc)
         })
         
-        # Print every 50 epochs
+
         if (epoch + 1) % 50 == 0:
             print(f"\n[Epoch {epoch + 1}] Train Acc: {train_acc*100:.2f}%, Val Acc: {val_acc*100:.2f}%\n")
     
@@ -224,17 +215,17 @@ class AccuracyPrintCallback(pl.Callback):
         print(f"{'Epoch':<10} {'Train Acc':<15} {'Val Acc':<15}")
         print("-"*40)
         
-        # Print every 50th epoch from history
+
         for record in self.accuracy_history:
             if record['epoch'] % 50 == 0:
                 print(f"{record['epoch']:<10} {record['train_acc']*100:<15.2f} {record['val_acc']*100:<15.2f}")
         
-        # Always print the final epoch if not already printed
+
         if self.accuracy_history and self.accuracy_history[-1]['epoch'] % 50 != 0:
             final = self.accuracy_history[-1]
             print(f"{final['epoch']:<10} {final['train_acc']*100:<15.2f} {final['val_acc']*100:<15.2f}")
         
-        # Print best accuracy
+
         if self.accuracy_history:
             best_val = max(self.accuracy_history, key=lambda x: x['val_acc'])
             print(f"\nBest Val Accuracy: {best_val['val_acc']*100:.2f}% (Epoch {best_val['epoch']})")

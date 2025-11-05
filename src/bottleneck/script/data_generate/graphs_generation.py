@@ -295,3 +295,12 @@ class TwoRadiusProblemDisconnectedGraph(TwoRadiusProblemStarGraph):
             n=self.n
         )
         return data
+        
+        
+        
+        
+        
+          
+        
+        
+        

@@ -39,7 +39,7 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
     Returns:
         tuple: (test_accuracy, energy) - Test accuracy and energy values
     """
-    # Load datasets
+
     (X_train, X_test, X_val), K = return_datasets(args=args)
     
     model_dir, path_to_project = create_model_dir(args, task_specific)
@@ -52,7 +52,6 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
         mode='max'
     )
 
-    # Create the base model based on the model type
     if args.gnn_type == 'SetTransformer':
         base_model = SetTransformerModel(args=args)
         print(f"Using SetTransformer Model (ignores edges)")
@@ -79,33 +78,30 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
 
     csv_logger = CSVLogger('csv_logs', name=f"{args.gnn_type}_{args.task_type}_{args.star_variant}_{args.n}_{K}_VN_{args.use_virtual_nodes}")
 
-    # Additional stopping callback for 'two' task type
+
     stop_callback = StopAtValAccCallback(target_acc=0.92) if args.task_type == 'two' else None
     callbacks_list = [callback for callback in [checkpoint_callback, stop_callback] if callback]
     print_callback = AccuracyPrintCallback()
     callbacks_list = [callback for callback in [checkpoint_callback, stop_callback, print_callback] if callback]
     
-    # Trainer setup with multi-GPU support
     num_gpus = torch.cuda.device_count() if torch.cuda.is_available() else 0
     
     if num_gpus >= 2:
-    # Use only 1 GPU for now to avoid distributed issues
+
         trainer = Trainer(
             logger=csv_logger,
             max_epochs=args.max_epochs,
             accelerator='gpu',
-            devices=1,  # Changed from 2 to 1
-            # strategy='ddp',  # Comment out DDP
+            devices=1, 
             enable_progress_bar=True,
             check_val_every_n_epoch=args.eval_every,
             callbacks=callbacks_list,
             enable_checkpointing=True,
             default_root_dir=f'{path_to_project}/data/lightning_logs',
-        # sync_batchnorm=True  # Comment out since not using DDP
+
         )
-        print(f"Training on 1 GPU")  # Update message
+        print(f"Training on 1 GPU")  
     elif num_gpus == 1:
-        # Single GPU training
         trainer = Trainer(
             logger=csv_logger,
             max_epochs=args.max_epochs,
@@ -119,7 +115,7 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
         )
         print(f"Training on 1 GPU")
     else:
-        # CPU training
+
         trainer = Trainer(
             logger=csv_logger,
             max_epochs=args.max_epochs,
@@ -132,11 +128,11 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
         )
         print(f"Training on CPU")
 
-    # Set batch sizes
+
     train_batch_size = args.batch_size
     val_batch_size = args.val_batch_size
 
-    # Prepare data loaders
+
     train_loader = DataLoader(
         X_train,
         batch_size=train_batch_size,
@@ -166,11 +162,11 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
     print(f'Starting training with star_variant: {args.star_variant}, virtual_nodes: {args.use_virtual_nodes}...')
     trainer.fit(model, train_loader, val_loader)
 
-    # Load best checkpoint
+
     print("Loading best model checkpoint...")
     best_checkpoint_path = checkpoint_callback.best_model_path
     
-    # Recreate the base model for loading checkpoint
+
     if args.gnn_type == 'SetTransformer':
         base_model = SetTransformerModel(args=args)
     elif args.gnn_type == 'Sumformer':
@@ -188,7 +184,7 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
     
     model = LightningModel.load_from_checkpoint(best_checkpoint_path, args=args, task_id=task_id, model=base_model)
     
-    # Create test loader with smaller subset for energy computation
+
     test_loader_energy = DataLoader(
         X_test[:5],
         batch_size=val_batch_size,
@@ -197,14 +193,13 @@ def train_graphs(args: EasyDict, task_specific: dict, task_id: int, seed: int) -
         num_workers=args.loader_workers
     )
 
-    # Compute energy
+
     energy = compute_energy(model, test_loader_energy)
     
-    # Convert energy to float if it's a tensor
+
     if isinstance(energy, torch.Tensor):
         energy = energy.item()
         
-    # Evaluate on the test set
     test_results = trainer.test(model, test_loader, verbose=False)
     test_accuracy = test_results[0]['test_acc'] * 100
     
@@ -267,14 +262,13 @@ def main():
             star_variant=args.star_variant
         )
         
-        # Add model-specific parameters
         if model_type == 'SetTransformer':
             config_args.num_heads = args.num_heads
             config_args.dropout = args.dropout
         elif model_type == 'MLP':
             config_args.mlp_hidden_dim = args.mlp_hidden_dim
         
-        # Handle virtual nodes settings
+
         if hasattr(args, 'use_virtual_nodes'):
             config_args.use_virtual_nodes = args.use_virtual_nodes
         if args.num_virtual_nodes is not None:
@@ -282,11 +276,11 @@ def main():
         if args.vn_aggregation is not None:
             config_args.vn_aggregation = args.vn_aggregation
         
-        # Set K for connected two-radius problem without virtual nodes
+
         if task_type == 'two' and args.star_variant == 'connected' and not config_args.use_virtual_nodes:
             config_args.K = args.K
         
-        # Set random seeds
+
         seed = 0
         config_args.need_one_hot = True
         os.environ["PYTHONHASHSEED"] = str(seed)
@@ -295,13 +289,11 @@ def main():
         random.seed(seed)
         np.random.seed(seed)
         seed_everything(seed, workers=True)
-        
-        # Train the model
         test_acc, energy = train_graphs(args=config_args, task_specific=task_specific, task_id=0, seed=seed)
         test_accs.append(test_acc)
         test_energies.append(energy)
     
-    # Print final summary
+
     for i, n in enumerate(range(start, end)):
         vn_info = ""
         k_info = ""

@@ -48,27 +48,27 @@ class SumformerBlock(nn.Module):
         
         self.residual = residual and (in_dim == out_dim)
         
-        # ?: X ? R^d'
+
         self.phi = MLP(in_dim, sum_dim, hidden_dim, num_layers=2, dropout=dropout, use_ln=use_ln, dtype=dtype)
         
-        # ?: X � R^d' ? Y
+
         self.psi = MLP(in_dim + sum_dim, out_dim, hidden_dim, num_layers=2, dropout=dropout, use_ln=use_ln, dtype=dtype)
         
         self.out_ln = nn.LayerNorm(out_dim) if use_ln else None
 
     def forward(self, x, batch):
-        # Step 1: Compute ?(xi) for each node
-        phi_x = self.phi(x)  # [N, sum_dim]
+
+        phi_x = self.phi(x)  
         
-        # Step 2: Compute ? = ?_i ?(xi) per graph
-        global_sum = global_add_pool(phi_x, batch)  # [num_graphs, sum_dim]
+
+        global_sum = global_add_pool(phi_x, batch)  
         
-        # Step 3: Broadcast sum to all nodes
-        expanded_sum = global_sum[batch]  # [N, sum_dim]
+
+        expanded_sum = global_sum[batch]  
         
-        # Step 4: Apply ?(xi, ?)
-        combined = torch.cat([x, expanded_sum], dim=-1)  # [N, in_dim + sum_dim]
-        output = self.psi(combined)  # [N, out_dim]
+
+        combined = torch.cat([x, expanded_sum], dim=-1) 
+        output = self.psi(combined)  
         
         if self.residual:
             output = x + output
@@ -94,10 +94,10 @@ class SumformerModel(nn.Module):
         self.out_dim = args.out_dim
         
         self.h_dim = getattr(args, "dim", 256)
-        self.sum_dim = getattr(args, "sum_dim", 256)  # d' in the paper
+        self.sum_dim = getattr(args, "sum_dim", 256) 
         self.dropout = getattr(args, "dropout", 0.0)
         
-        # Stack Sumformer blocks
+
         blocks = []
         in_d = self.in_dim
         
@@ -117,8 +117,6 @@ class SumformerModel(nn.Module):
             in_d = self.h_dim
             
         self.blocks = nn.ModuleList(blocks)
-        
-        # Final classification head
         self.head = nn.Linear(self.h_dim, self.out_dim, dtype=dtype)
         nn.init.xavier_uniform_(self.head.weight)
 
@@ -130,11 +128,10 @@ class SumformerModel(nn.Module):
         else:
             batch = torch.zeros(x.size(0), dtype=torch.long, device=x.device)
         
-        # Apply Sumformer blocks
+
         for block in self.blocks:
             x = block(x, batch)
         
-        # Final classification
         output = self.head(x)
         
         return output

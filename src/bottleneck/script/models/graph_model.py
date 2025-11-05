@@ -29,17 +29,17 @@ class GraphModel(nn.Module):
         super().__init__()
         dtype = dtype_mapping[args.dtype]
         
-        # Model configuration
+
         self.use_layer_norm = args.use_layer_norm
         self.use_residual = args.use_residual
         self.use_activation = args.use_activation
         self.num_layers = args.depth
-        self.h_dim = 1024 
+        self.h_dim = 256 
         self.out_dim = args.out_dim
         self.in_dim = args.in_dim   
         self.task_type = args.task_type
         
-        # GNN Layers
+
         self.layers = nn.ModuleList([
             get_layer(in_dim=self.in_dim, out_dim=self.h_dim, args=args)
         ] + [
@@ -47,16 +47,16 @@ class GraphModel(nn.Module):
             for i in range(self.num_layers-1)
         ])
         
-        # Layer normalization
+
         self.layer_norms = (
             nn.ModuleList([nn.LayerNorm(self.h_dim) for _ in range(self.num_layers)])
             if self.use_layer_norm else None
         )
         
-        # Output layer
+
         self.out_layer = nn.Linear(self.h_dim, self.out_dim) 
         
-        # Initialize model parameters
+
         self.init_model()
  
     def init_model(self):
@@ -75,20 +75,20 @@ class GraphModel(nn.Module):
         for i, layer in enumerate(self.layers):
             layer_output = x.clone()
             
-            # Standard message passing for all nodes
+
             layer_output = layer(layer_output, edge_index, edge_attr)
             
-            # Apply residual connection if enabled
+
             if self.use_residual and i > 0:
                 x = layer_output + x
             else:
                 x = layer_output
                 
-            # Apply layer normalization if enabled    
+ 
             if self.use_layer_norm:
                 x = self.layer_norms[i](x)
                 
-            # Apply activation if enabled    
+
             if self.use_activation:
                 x = F.leaky_relu(x)
                 
@@ -101,24 +101,23 @@ class GraphModelWithVirtualNode(GraphModel):
     Inherits from GraphModel and adds virtual node functionality.
     """
     def __init__(self, args: EasyDict):
-        # Initialize parent class first (this creates layers, layer_norms, etc.)
+
         super().__init__(args)
         
         dtype = dtype_mapping[args.dtype]
         
-        # Virtual node configuration
+
         self.use_virtual_nodes = getattr(args, 'use_virtual_nodes', True)
         self.vn_residual = getattr(args, 'vn_residual', True)
         self.dropout = getattr(args, 'dropout', 0.1)
         self.vn_aggregation = getattr(args, 'vn_aggregation', 'sum')
-        
-        # Virtual Node Components
+
         if self.use_virtual_nodes:
-            # Virtual node embedding (initialized to zero)
+
             self.virtualnode_embedding = nn.Embedding(1, self.h_dim, dtype=dtype)
             nn.init.constant_(self.virtualnode_embedding.weight.data, 0)
             
-            # MLPs for updating virtual node representations
+
             self.mlp_virtualnode_list = nn.ModuleList()
             for layer in range(self.num_layers - 1):
                 self.mlp_virtualnode_list.append(
@@ -193,12 +192,12 @@ class GraphModelWithMultipleVirtualNodes(GraphModel):
     Inherits from GraphModel and adds multiple virtual node functionality.
     """
     def __init__(self, args: EasyDict):
-        # Initialize parent class
+
         super().__init__(args)
         
         dtype = dtype_mapping[args.dtype]
 
-        # Virtual node configuration
+
         self.use_virtual_nodes = getattr(args, 'use_virtual_nodes', True)
         self.num_virtual_nodes = getattr(args, 'num_virtual_nodes', 3)
         self.vn_aggregation = getattr(args, 'vn_aggregation', 'mean')

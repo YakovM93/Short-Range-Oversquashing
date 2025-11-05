@@ -187,7 +187,7 @@ class TwoRadiusProblemStarGraph(RadiusProblemGraphs):
         B_ids = A_ids[torch.randperm(n)]
 
         A_labels = torch.randint(0, self.num_classes, (n,), dtype=torch.long)
-        C_labels = torch.full((self.K,), self.num_classes - 1, dtype=torch.long)
+        C_labels = torch.full((self.K,), 0, dtype=torch.long)
         B_labels = torch.full((n,), self.num_classes - 1, dtype=torch.long)
 
         A_ids_oh = self.one_hot_encode(A_ids, n + self.K)

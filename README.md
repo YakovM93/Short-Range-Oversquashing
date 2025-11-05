@@ -69,35 +69,137 @@ Train a GIN model on the two-radius star graph problem:
 python train.py --model_type GIN --task_type two --star_variant connected --start 2 --end 10
 ```
 
-### Command-Line Arguments
+# Training Examples
 
-- `--model_type`: Model architecture (`GIN`, `GAT`, `GCN`, `GGNN`, `SAGE`, `SW`, `SetTransformer`, `Sumformer`, `MLP`)
-- `--task_type`: Task type (`two` for two-radius problem, `one` for one-radius problem)
-- `--star_variant`: Star graph variant (`connected` for two-radius with central node(s), `disconnected` for no central nodes)
-- `--start`: Starting value for parameter n (minimum number of nodes)
-- `--end`: Ending value for parameter n (exclusive)
-- `--use_virtual_nodes`: Enable virtual nodes
-- `--num_virtual_nodes`: Number of virtual nodes (default: 1)
-- `--K`: Number of central nodes for two-radius problem (default: 1)
+## Default Settings
+By default, the following parameters are used:
+- `model_type`: GIN
+- `task_type`: two (two-radius problem)
+- `star_variant`: connected (with central nodes)
+- `use_virtual_nodes`: False (no virtual nodes)
+- `K`: 1 (single central node)
+- `start`: 2, `end`: 3 (trains on n=2 only)
+- `mlp_hidden_dim`: 512
+- `num_heads`: 1 (for SetTransformer)
+- `dropout`: 0.1
 
-### Examples
+## Basic Examples
 
-**Train with virtual nodes**:
+### Train GCN without virtual nodes (default behavior)
 ```bash
-python train.py --model_type GIN --task_type two --use_virtual_nodes --num_virtual_nodes 3
+python train.py --model_type GCN --task_type two --star_variant connected --start 10 --end 200
 ```
 
-**Train SetTransformer**:
+### Train MLP baseline
 ```bash
-python train.py --model_type SetTransformer --task_type two --num_heads 4 --dropout 0.1
+python train.py --model_type MLP --task_type two --start 10 --end 200 --mlp_hidden_dim 1024
 ```
 
-**Train on disconnected graphs**:
+### Train SAGE on connected graphs
 ```bash
-python train.py --model_type GIN --star_variant disconnected --start 5 --end 15
+python train.py --model_type SAGE --star_variant connected --start 50 --end 150
 ```
 
----
+## Virtual Nodes Examples
+
+### GIN with 3 virtual nodes
+```bash
+python train.py --model_type GIN --use_virtual_nodes --num_virtual_nodes 3 --start 10 --end 200
+```
+
+### GAT with virtual nodes using mean aggregation
+```bash
+python train.py --model_type GAT --use_virtual_nodes --num_virtual_nodes 2 --vn_aggregation mean --start 10 --end 100
+```
+
+### Disable virtual nodes explicitly (if needed)
+```bash
+python train.py --model_type GCN --no_virtual_nodes --start 10 --end 200
+```
+
+## Different Task Types
+
+### One-radius problem (simpler task)
+```bash
+python train.py --model_type GIN --task_type one --start 5 --end 50
+```
+
+### Two-radius problem with disconnected graphs
+```bash
+python train.py --model_type GAT --task_type two --star_variant disconnected --start 10 --end 100
+```
+
+## Central Nodes Configuration
+
+### Multiple central nodes (K=5)
+```bash
+python train.py --model_type GCN --task_type two --K 5 --start 50 --end 200
+```
+
+### Single central node with large graph range
+```bash
+python train.py --model_type SAGE --K 1 --start 10 --end 500
+```
+
+## SetTransformer and Attention Models
+
+### SetTransformer with 4 attention heads
+```bash
+python train.py --model_type SetTransformer --num_heads 4 --dropout 0.2 --start 10 --end 200
+```
+
+### GAT with custom configuration
+```bash
+python train.py --model_type GAT --start 100 --end 300 --task_type two
+```
+
+## MLP Variants
+
+### MLP with larger hidden dimension
+```bash
+python train.py --model_type MLP --mlp_hidden_dim 2048 --start 10 --end 200
+```
+
+### MLP on disconnected graphs
+```bash
+python train.py --model_type MLP --star_variant disconnected --mlp_hidden_dim 256 --start 5 --end 100
+```
+
+## Combined Configurations
+
+### GIN on disconnected one-radius problem
+```bash
+python train.py --model_type GIN --task_type one --star_variant disconnected --start 20 --end 150
+```
+
+### GCN with virtual nodes and multiple central nodes
+```bash
+python train.py --model_type GCN --use_virtual_nodes --num_virtual_nodes 2 --K 10 --start 50 --end 200
+```
+
+### SAGE with all bells and whistles
+```bash
+python train.py --model_type SAGE --task_type two --star_variant connected --use_virtual_nodes --num_virtual_nodes 3 --vn_aggregation sum --K 5 --start 100 --end 500
+```
+
+### Quick test run (minimal range)
+```bash
+python train.py --model_type GIN --start 10 --end 11
+```
+
+### Full training run 
+```bash
+python train.py --model_type GAT --task_type two --start 10 --end 200 --K 1
+```
+
+## Notes
+- For MLP models, the `mlp_hidden_dim` parameter controls model capacity
+- Virtual nodes can significantly help with oversquashing issues
+- The `K` parameter only affects two-radius problems with connected variant
+- SetTransformer ignores graph structure and treats nodes as a set
+- Disconnected variant removes central nodes entirely, testing pure message passing
+
+
 
 ## Configuration
 

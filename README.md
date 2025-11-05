@@ -208,7 +208,7 @@ Model configurations are defined in `configs/task_config.yaml`. Key parameters:
 The project supports experiments on:
 
 1. **Two-Radius Problem**: Nodes are separated by distance 2 through central nodes
-2. **One-Radius Problem**: Direct connections between node groups
+2. **One-Radius Problem**: Source nodes connectet to one target node
 3. **Disconnected Graphs**: Testing information flow without direct paths
 
 ### Energy Metrics

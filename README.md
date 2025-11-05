@@ -136,8 +136,7 @@ python train.py --model_type GAT --task_type two --star_variant disconnected --s
 python train.py --model_type GCN --task_type two --K 5 --start 50 --end 200
 ```
 
-```
-
+``
 ## SetTransformer and Attention Models
 
 ### SetTransformer with 4 attention heads

@@ -4,15 +4,8 @@ Research project investigating oversquashing phenomena in Message Passing Neural
 
 ## Description
 
-This project addresses the oversquashing problem in Graph Neural Networks (GNNs), where information bottlenecks prevent effective message passing between nodes. The research implements and evaluates various mechanisms to mitigate oversquashing issues, including:
-
-- Virtual node architectures
-- Multiple architectural variants (GIN, GAT, GCN, GGNN, GraphSAGE, FSW)
-- Set-based models (SetTransformer, Sumformer)
-- Analysis of the two-radius problem in star graphs
-
-Built with PyTorch, PyTorch Geometric, and PyTorch Lightning, this project aims to enhance GNN performance on tasks requiring long-range dependencies without information loss.
-
+This project addresses the oversquashing problem in Graph Neural Networks (GNNs), where information bottlenecks prevent effective message passing between nodes. The research implements and evaluates various mechanisms to mitigate oversquashing issues, by Analysis of the two-radius problem in star-graphs with Multiple architectural of GNN variants, Transformer variants, Multilayer Perceptron and Virtual nodes.
+Implementation with PyTorch, PyTorch Geometric, and PyTorch Lightning.
 ---
 
 ## Features

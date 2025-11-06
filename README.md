@@ -17,12 +17,11 @@ Built with PyTorch, PyTorch Geometric, and PyTorch Lightning, this project aims 
 
 ## Features
 
-- **Multiple GNN Architectures**: Support for GIN, GAT, GCN, GGNN, GraphSAGE, Transformer, FSW
-- **Set-Based Models**: SetTransformer and Sumformer implementations
+- **Multiple Architectures**: Support for GIN, GAT, GCN, GGNN, GraphSAGE, Graph Transformer, FSW ,SetTransformer and Sumformer implementations, MLP
 - **Virtual Nodes**: Single and multiple virtual node configurations
 - **Synthetic Benchmarks**: Two-radius and one-radius problem generators
-- **Energy Metrics**: Gradient norm and Dirichlet energy computation
 - **Comprehensive Logging**: CSV logging with PyTorch Lightning
+- **weights and biases(wandb) option to use**
 
 ---
 
@@ -44,7 +43,6 @@ Built with PyTorch, PyTorch Geometric, and PyTorch Lightning, this project aims 
 2. **Create a virtual environment**:
    ```bash
    conda create --name oversquash python=3.11 -c conda-forge
-   conda activate oversquash
    ```
 
 3. **Install dependencies**:
@@ -213,7 +211,7 @@ The project supports experiments on:
 
 ### Energy Metrics
 
-The code computes two energy metrics:
+The code computes two  metrics:
 - **Gradient Norm**: Measures gradient flow from source to target nodes
 - **Dirichlet Energy**: Measures smoothness of node representations (MAD normalized by embedding norms)
 

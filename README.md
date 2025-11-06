@@ -43,11 +43,6 @@ Implementation with PyTorch, PyTorch Geometric, and PyTorch Lightning.
    pip install -r requirements.txt
    ```
 
-   For LRGB datasets (optional):
-   ```bash
-   pip install -r lrgb_requirements.txt
-   ```
-
 ---
 
 ## Usage

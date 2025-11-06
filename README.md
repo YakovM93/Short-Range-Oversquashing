@@ -46,6 +46,11 @@ Implementation with PyTorch, PyTorch Geometric, and PyTorch Lightning.
 ---
 
 ## Usage
+```bash
+cd bottleneck 
+```
+
+
 
 ### Basic Training
 

@@ -237,7 +237,7 @@ class GraphModelWithMultipleVirtualNodes(GraphModel):
 
             if self.use_virtual_nodes:
                 aggregated_vn = vn_emb.mean(dim=1)
-                x += aggregated_vn[batch_tensor]
+                x = x + aggregated_vn[batch_tensor]
 
             if self.use_layer_norm:
                 x = self.layer_norms[i](x)

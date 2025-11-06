@@ -1,5 +1,5 @@
 # Short-Range Oversquashing
-
+![alt text](image.png)
 Research project investigating oversquashing phenomena in Message Passing Neural Networks (MPNNs), specifically focusing on short-range information bottlenecks in graph neural networks.
 
 ## Description
@@ -212,7 +212,7 @@ The code computes two  metrics:
 
 ## Research Context
 
-This project is part of research conducted at the Technion – Israel Institute of Technology, investigating the short-range oversquashing phenomenon in MPNNs. The work explores how information bottlenecks occur even over short distances in graph structures and proposes solutions through architectural modifications.
+This project is part of research conducted at the Technion – Israel Institute of Technology.
 
 ---
 

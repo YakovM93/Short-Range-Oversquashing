@@ -27,6 +27,7 @@ share/python-wheels/
 # Installer logs
 pip-log.txt
 pip-delete-this-directory.txt
+.nfs81d1b77a49162e1900006458
 
 # Conda environments
 .env

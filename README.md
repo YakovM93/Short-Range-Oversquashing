@@ -209,10 +209,10 @@ The code computes two  metrics:
 - **Dirichlet Energy**: Measures smoothness of node representations (MAD normalized by embedding norms)
 
 ---
+---
+This  research conducted at the Technion – Israel Institute of Technology.
+---
 
-## Research Context
-
-This project is part of research conducted at the Technion – Israel Institute of Technology.
 
 ---
 

@@ -1,5 +1,5 @@
 # Short-Range Oversquashing
-![Alt text](image/image.png
+![Alt text](image/image.png)
 Research project investigating oversquashing phenomena in Message Passing Neural Networks (MPNNs), specifically focusing on short-range information bottlenecks in graph neural networks.
 
 ## Description

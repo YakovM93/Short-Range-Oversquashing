@@ -121,7 +121,9 @@ python train.py --model_type GCN --task_type two --star_variant connected --K 3 
 ### one Virtual Node
 ```bash
 python train.py --model_type GCN --task_type two --star_variant connceted --use_virtual_nodes  --start 10 --end 40
+
 python train.py --model_type SAGE --task_type two --star_variant connceted --use_virtual_nodes   --vn_aggregation sum --start 10 --end 11
+
 python train.py --model_type GCN --task_type two --star_variant disconnceted --use_virtual_nodes  --start 10 --end 40
 ```
 
@@ -147,7 +149,7 @@ python train.py --model_type SetTransformer --task_type two --star_variant disco
 
 ```
 
-### MLP  Multilayer Perceptron
+### MLP - Multilayer Perceptron
 ```bash
 python train.py --model_type MLP --task_type two --mlp_hidden_dim 512 --start 2 --end 20
 

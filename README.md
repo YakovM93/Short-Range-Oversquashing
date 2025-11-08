@@ -14,8 +14,9 @@ Implementation with PyTorch, PyTorch Geometric, and PyTorch Lightning.
 - **Virtual Nodes**: Single and multiple virtual node configurations
 - **Synthetic Benchmarks**: Two-radius and one-radius problem generators
 - **Comprehensive Logging**: CSV logging with PyTorch Lightning
+- **Flexible Configuration**: Command-line arguments and YAML config files
+- **Multi-GPU Training**: Distributed training support with DDP for parallel processing across multiple GPUs
 - **weights and biases(wandb) option to use**
-
 ---
 
 ## Installation
@@ -74,33 +75,62 @@ By default, the following parameters are used:
 - `num_heads`: 1 (for SetTransformer)
 - `dropout`: 0.1
 
-## Basic Examples
+## Experiment Categories
 
-### Train GCN without virtual nodes (default behavior)
+### One-Radius Problem
 ```bash
-python train.py --model_type GCN --task_type two --star_variant connected --start 10 --end 200
+
+python train.py --model_type GCN --task_type one --start 2 --end 10
+
+python train.py --model_type GIN --task_type one --start 10 --end 50
+
+python train.py --model_type SAGE --task_type one --start 50 --end 100
+
+python train.py --model_type GAT --task_type one --start 50 --end 100
 ```
 
-### Train MLP baseline
+### Two-Radius Problem (Connected)
+
 ```bash
-python train.py --model_type MLP --task_type two --start 10 --end 200 --mlp_hidden_dim 1024
+
+python train.py --model_type GAT --task_type two --star_variant connected --start 2 --end 20
+
+python train.py --model_type GIN --task_type two --star_variant connected --start 20 --end 50
+
+python train.py --model_type GCN --task_type two --star_variant connected --start 50 --end 100
+
+python train.py --model_type SAGE --task_type one --start 50 --end 100
 ```
 
-### Train SAGE on connected graphs
+### Two-Radius Problem (Disconnected)
 ```bash
-python train.py --model_type SAGE --star_variant connected --start 50 --end 150
+python train.py --model_type GCN --task_type two --star_variant disconnected --start 2 --end 15
+
 ```
 
-## Virtual Nodes Examples
-
-### GIN with 3 virtual nodes
+### Varying Number of Central Nodes (K)
 ```bash
-python train.py --model_type GIN --use_virtual_nodes --num_virtual_nodes 3 --start 10 --end 200
+# You don't need to write it if it's default
+
+python train.py --model_type GIN --task_type two --star_variant connected --K 2 --start 10 --end 30
+
+python train.py --model_type GCN --task_type two --star_variant connected --K 3 --start 10 --end 30
+
+
+```
+### one Virtual Node
+```bash
+python train.py --model_type GCN --task_type two --star_variant connceted --use_virtual_nodes  --start 10 --end 40
+python train.py --model_type SAGE --task_type two --star_variant connceted --use_virtual_nodes   --vn_aggregation sum --start 10 --end 11
+python train.py --model_type GCN --task_type two --star_variant disconnceted --use_virtual_nodes  --start 10 --end 40
 ```
 
-### GAT with virtual nodes using mean aggregation
+### Virtual Nodes
 ```bash
 python train.py --model_type GAT --use_virtual_nodes --num_virtual_nodes 2 --vn_aggregation mean --start 10 --end 100
+
+python train.py --model_type GIN --task_type two --star_variant disconnected --use_virtual_nodes --num_virtual_nodes 5 --start 10 --end 50
+
 ```
 
 ### Disable virtual nodes explicitly (if needed)
@@ -108,70 +138,37 @@ python train.py --model_type GAT --use_virtual_nodes --num_virtual_nodes 2 --vn_
 python train.py --model_type GCN --no_virtual_nodes --start 10 --end 200
 ```
 
-## Different Task Types
 
-### One-radius problem (simpler task)
+### SetTransformer (Attention-Based)
 ```bash
-python train.py --model_type GIN --task_type one --start 5 --end 50
+python train.py --model_type SetTransformer --task_type two --num_heads 8 --start 2 --end 50
+
+python train.py --model_type SetTransformer --task_type two --star_variant disconnected --start 2 --end 50
+
 ```
 
-### Two-radius problem with disconnected graphs
+### MLP  Multilayer Perceptron
 ```bash
-python train.py --model_type GAT --task_type two --star_variant disconnected --start 10 --end 100
+python train.py --model_type MLP --task_type two --mlp_hidden_dim 512 --start 2 --end 20
+
 ```
 
-## Central Nodes Configuration
 
-### Multiple central nodes (K=5)
+###  Sumformer
 ```bash
-python train.py --model_type GCN --task_type two --K 5 --start 50 --end 200
+python train.py --model_type Sumformer --task_type two --dropout 0.15 --start 2 --end 50
+
 ```
 
-``
-## SetTransformer and Attention Models
-
-### SetTransformer with 4 attention heads
-```bash
-python train.py --model_type SetTransformer --num_heads 4 --dropout 0.2 --start 10 --end 200
-```
-
-### GAT with custom configuration
-```bash
-python train.py --model_type GAT --start 100 --end 300 --task_type two
-```
-
-## MLP Variants
-
-### MLP with larger hidden dimension
-```bash
-python train.py --model_type MLP --mlp_hidden_dim 2048 --start 10 --end 200
-```
-
-### MLP on disconnected graphs
-```bash
-python train.py --model_type MLP --star_variant disconnected --mlp_hidden_dim 256 --start 5 --end 100
-```
-
-## Combined Configurations
-
-### GCN with virtual nodes and multiple central nodes
-```bash
-python train.py --model_type GCN --use_virtual_nodes --num_virtual_nodes 2 --K 10 --start 50 --end 200
-```
-
-### SAGE with all bells and whistles
+### SAGE with virtual nodes and multiple central nodes and connected graph
 ```bash
 python train.py --model_type SAGE --task_type two --star_variant connected --use_virtual_nodes --num_virtual_nodes 3 --vn_aggregation sum --K 5 --start 100 --end 500
 ```
 
-### Quick test run (minimal range)
-```bash
-python train.py --model_type GIN --start 10 --end 11
-```
 
-### Full training run 
+### Quick test run 
 ```bash
-python train.py --model_type GAT --task_type two --start 10 --end 200 --K 1
+python train.py --model_type GAT  --start 10 --end 200
 ```
 
 ## Notes

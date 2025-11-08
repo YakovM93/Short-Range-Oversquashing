@@ -118,7 +118,7 @@ python train.py --model_type GCN --task_type two --star_variant connected --K 3 
 
 
 ```
-### one Virtual Node
+### One Virtual Node
 ```bash
 python train.py --model_type GCN --task_type two --star_variant connceted --use_virtual_nodes  --start 10 --end 40
 
